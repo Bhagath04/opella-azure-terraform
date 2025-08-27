@@ -30,8 +30,7 @@ resource "azurerm_subnet" "this" {
   address_prefixes     = each.value.address_prefixes
 }
 
-
-# Network Security Group
+# Network Security Groups
 resource "azurerm_network_security_group" "this" {
   for_each            = { for k, v in var.subnets : k => v if v.nsg_enabled }
   name                = "${each.key}-nsg"
@@ -39,16 +38,16 @@ resource "azurerm_network_security_group" "this" {
   resource_group_name = var.resource_group_name
 }
 
+# Associate NSG to Subnets
 resource "azurerm_subnet_network_security_group_association" "this" {
   for_each                  = azurerm_network_security_group.this
   subnet_id                 = azurerm_subnet.this[each.key].id
   network_security_group_id = each.value.id
 }
 
-
-# NSG Rules
+# NSG Rules (example: allow SSH)
 resource "azurerm_network_security_rule" "this" {
-  for_each = { for k, v in var.subnets : k => v if v.nsg_enabled }
+  for_each = azurerm_network_security_group.this
 
   name                        = "${each.key}-allow-ssh"
   priority                    = 100
@@ -60,7 +59,6 @@ resource "azurerm_network_security_rule" "this" {
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
 
-  resource_group_name         = azurerm_resource_group.this.name
-  network_security_group_name = azurerm_network_security_group.this[each.key].name
+  resource_group_name         = var.resource_group_name
+  network_security_group_name = each.value.name
 }
-
