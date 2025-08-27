@@ -1,14 +1,3 @@
-variable "resource_group_name" {}
-variable "location" {}
-variable "vnet_name" {}
-variable "address_space" {
-  type = list(string)
-}
-variable "subnet_name" {}
-variable "subnet_prefixes" {
-  type = list(string)
-}
-
 resource "azurerm_virtual_network" "this" {
   name                = var.vnet_name
   address_space       = var.address_space
@@ -35,7 +24,7 @@ resource "azurerm_subnet_network_security_group_association" "this" {
 }
 
 resource "azurerm_network_security_rule" "subnet_rules" {
-  for_each                    = {
+  for_each = {
     "ssh" = {
       priority                   = 100
       direction                  = "Inbound"
