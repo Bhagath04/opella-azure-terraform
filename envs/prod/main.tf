@@ -9,36 +9,60 @@ locals {
   }
 }
 
+# Resource Group
 resource "azurerm_resource_group" "rg" {
   name     = "${local.name_prefix}-rg"
   location = var.location
   tags     = local.tags
 }
 
+# Reusable VNet module
 module "vnet" {
   source              = "../../modules/vnet"
-  vnet_name                = "${local.name_prefix}-vnet"
+  vnet_name           = "${local.name_prefix}-vnet"
   resource_group_name = azurerm_resource_group.rg.name
   location            = var.location
   address_space       = var.address_space
   subnets             = var.subnets
-  nsg_rules = [
-    {
-      name                       = "allow-internal-https"
+
+  nsg_rules = {
+    allow-ssh = {
       priority                   = 100
       direction                  = "Inbound"
       access                     = "Allow"
       protocol                   = "Tcp"
       source_port_range          = "*"
-      destination_port_range     = "443"
-      source_address_prefix      = "VirtualNetwork"
-      destination_address_prefix = "VirtualNetwork"
+      destination_port_range     = "22"
+      source_address_prefix = "YOUR_PUBLIC_IP/32"
+      destination_address_prefix = "*"
     }
-  ]
+    deny-all-inbound = {
+      priority                   = 200
+      direction                  = "Inbound"
+      access                     = "Deny"
+      protocol                   = "*"
+      source_port_range          = "*"
+      destination_port_range     = "*"
+      source_address_prefix = "YOUR_PUBLIC_IP/32"
+      destination_address_prefix = "*"
+    }
+  }
+
   tags = local.tags
 }
 
-# NIC without public IP for prod (private only)
+
+# Public IP (optional for dev)
+resource "azurerm_public_ip" "vm" {
+  name                = "${local.name_prefix}-pip"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = var.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = local.tags
+}
+
+# NIC
 resource "azurerm_network_interface" "vm" {
   name                = "${local.name_prefix}-nic"
   location            = var.location
@@ -48,16 +72,17 @@ resource "azurerm_network_interface" "vm" {
     name                          = "ipcfg"
     subnet_id                     = module.vnet.subnet_ids["app"]
     private_ip_address_allocation = "Dynamic"
-
+    public_ip_address_id          = azurerm_public_ip.vm.id
   }
   tags = local.tags
 }
 
+# Linux VM (Ubuntu LTS)
 resource "azurerm_linux_virtual_machine" "vm" {
   name                = "${local.name_prefix}-vm"
   resource_group_name = azurerm_resource_group.rg.name
   location            = var.location
-  size                = "Standard_B2s"
+  size                = "Standard_B1s"
   admin_username      = var.vm_admin_username
   network_interface_ids = [azurerm_network_interface.vm.id]
 
@@ -82,6 +107,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
   tags = local.tags
 }
 
+# Storage Account for dev artifacts / blobs
 resource "random_string" "sa" {
   length  = 6
   upper   = false
@@ -90,18 +116,18 @@ resource "random_string" "sa" {
 }
 
 resource "azurerm_storage_account" "sa" {
-  name                     = replace(substr(join("", ["sap", random_string.sa.result, local.name_prefix]), 0, 24), "-", "")
+  name                     = replace(substr(join("", ["sa", random_string.sa.result, local.name_prefix]), 0, 24), "-", "")
   resource_group_name      = azurerm_resource_group.rg.name
   location                 = var.location
   account_tier             = "Standard"
-  account_replication_type = "GRS"
+  account_replication_type = "LRS"
   allow_nested_items_to_be_public = false
   min_tls_version          = "TLS1_2"
   tags                     = local.tags
 }
 
 resource "azurerm_storage_container" "blobs" {
-  name                  = "prod-data"
+  name                  = "dev-artifacts"
   storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "private"
 }
