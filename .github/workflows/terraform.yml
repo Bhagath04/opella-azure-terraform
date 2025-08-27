@@ -1,10 +1,20 @@
 name: Terraform Azure Deploy
 
 on:
-  push:
-    branches:
-      - main
+  #push:
+  #  branches:
+  #    - main
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select environment'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - sit
+          - prod
 
 env:
   ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -17,9 +27,10 @@ env:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        env: [dev]
+    environment: ${{ github.event.inputs.environment }}
+    #strategy:
+     # matrix:
+     #   env: [dev]
 
     steps:
       - name: Checkout repo
@@ -31,18 +42,18 @@ jobs:
           terraform_version: 1.8.5
 
       - name: Terraform Init
-        working-directory: envs/${{ matrix.env }}
+        working-directory: envs/${{ github.event.inputs.environment }}
         run: terraform init -input=false
 
       - name: Terraform Validate
-        working-directory: envs/${{ matrix.env }}
+        working-directory: envs/${{ github.event.inputs.environment }}
         run: terraform validate
 
       - name: Terraform Plan
-        working-directory: envs/${{ matrix.env }}
+        working-directory: envs/${{ github.event.inputs.environment }}
         run: terraform plan -out=tfplan -input=false -lock=false
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        working-directory: envs/${{ matrix.env }}
+        working-directory: envs/${{ github.event.inputs.environment }}
         run: terraform apply -input=false -auto-approve tfplan
