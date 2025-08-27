@@ -1,32 +1,31 @@
 variable "resource_group_name" {
-  description = "The name of the resource group"
   type        = string
+  description = "The name of the resource group"
 }
 
 variable "location" {
-  description = "The Azure location for resources"
   type        = string
-}
-
-variable "address_space" {
-  description = "The address space that is used by the virtual network"
-  type        = list(string)
-}
-
-variable "subnets" {
-  description = "A map of subnets to create"
-  type = map(object({
-    address_prefix = string
-  }))
+  description = "The Azure location for resources"
 }
 
 variable "vnet_name" {
-  description = "The name of the Virtual Network"
   type        = string
+  description = "The name of the virtual network"
+}
+
+variable "address_space" {
+  type        = list(string)
+  description = "The address space for the virtual network"
+}
+
+variable "subnets" {
+  type = map(object({
+    address_prefix = string
+  }))
+  description = "Subnets configuration"
 }
 
 variable "nsg_rules" {
-  description = "A map of NSG rules to apply"
   type = map(object({
     priority                   = number
     direction                  = string
@@ -37,5 +36,11 @@ variable "nsg_rules" {
     source_address_prefix      = string
     destination_address_prefix = string
   }))
-  default = {}
+  description = "NSG rules for the virtual network"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags to apply to resources"
+  default     = {}
 }
