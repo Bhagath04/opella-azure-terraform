@@ -1,0 +1,133 @@
+locals {
+  name_prefix = lower(join("-", [var.project, var.environment, replace(var.location, " ", "")]))
+  tags = {
+    project     = var.project
+    environment = var.environment
+    region      = var.location
+    owner       = "platform@opella"
+    managed_by  = "terraform"
+  }
+}
+
+# Resource Group
+resource "azurerm_resource_group" "rg" {
+  name     = "${local.name_prefix}-rg"
+  location = var.location
+  tags     = local.tags
+}
+
+# Reusable VNet module
+module "vnet" {
+  source              = "../../modules/vnet"
+  vnet_name           = "${local.name_prefix}-vnet"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = var.location
+  address_space       = var.address_space
+  subnets             = var.subnets
+
+  nsg_rules = {
+    allow-ssh = {
+      priority                   = 100
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "22"
+      source_address_prefix = "YOUR_PUBLIC_IP/32"
+      destination_address_prefix = "*"
+    }
+    deny-all-inbound = {
+      priority                   = 200
+      direction                  = "Inbound"
+      access                     = "Deny"
+      protocol                   = "*"
+      source_port_range          = "*"
+      destination_port_range     = "*"
+      source_address_prefix = "YOUR_PUBLIC_IP/32"
+      destination_address_prefix = "*"
+    }
+  }
+
+  tags = local.tags
+}
+
+
+# Public IP (optional for dev)
+resource "azurerm_public_ip" "vm" {
+  name                = "${local.name_prefix}-pip"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = var.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = local.tags
+}
+
+# NIC
+resource "azurerm_network_interface" "vm" {
+  name                = "${local.name_prefix}-nic"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "ipcfg"
+    subnet_id                     = module.vnet.subnet_ids["app"]
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.vm.id
+  }
+  tags = local.tags
+}
+
+# Linux VM (Ubuntu LTS)
+resource "azurerm_linux_virtual_machine" "vm" {
+  name                = "${local.name_prefix}-vm"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = var.location
+  size                = "Standard_B1s"
+  admin_username      = var.vm_admin_username
+  network_interface_ids = [azurerm_network_interface.vm.id]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
+
+  admin_ssh_key {
+    username   = var.vm_admin_username
+    public_key = var.vm_admin_ssh_key
+  }
+
+  disable_password_authentication = true
+  tags = local.tags
+}
+
+# Storage Account for dev artifacts / blobs
+resource "random_string" "sa" {
+  length  = 6
+  upper   = false
+  numeric = true
+  special = false
+}
+
+resource "azurerm_storage_account" "sa" {
+  name                     = replace(substr(join("", ["sa", random_string.sa.result, local.name_prefix]), 0, 24), "-", "")
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = var.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  allow_nested_items_to_be_public = false
+  min_tls_version          = "TLS1_2"
+  tags                     = local.tags
+}
+
+resource "azurerm_storage_container" "blobs" {
+  name                  = "dev-artifacts"
+  storage_account_name  = azurerm_storage_account.sa.name
+  container_access_type = "private"
+}
