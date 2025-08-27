@@ -27,8 +27,9 @@ resource "azurerm_subnet" "this" {
   name                 = each.key
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
-  address_prefixes     = [each.value.address_prefix]
+  address_prefixes     = each.value.address_prefixes
 }
+
 
 # Network Security Group
 resource "azurerm_network_security_group" "this" {

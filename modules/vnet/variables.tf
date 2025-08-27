@@ -20,10 +20,11 @@ variable "address_space" {
 
 variable "subnets" {
   type = map(object({
-    address_prefix = string
+    address_prefixes = list(string)
+    nsg_enabled      = optional(bool, false)
   }))
-  description = "Subnets configuration"
 }
+
 
 variable "nsg_rules" {
   type = map(object({
