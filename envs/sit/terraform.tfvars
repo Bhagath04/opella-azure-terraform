@@ -1,5 +1,5 @@
 project      = "opella"
-environment  = "dev"
+environment  = "sit"
 location     = "eastus"
 address_space= ["10.10.0.0/16"]
 subnets = {
@@ -14,3 +14,7 @@ subnets = {
 }
 vm_admin_username = "azureuser"
 # paste your ~/.ssh/id_rsa.pub or similar
+variable "vm_admin_ssh_key" {
+  type        = string
+  description = "Public SSH key for VM admin user"
+}
