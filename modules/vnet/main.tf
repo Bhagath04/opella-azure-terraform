@@ -21,8 +21,9 @@ resource "azurerm_network_security_group" "this" {
   tags                = var.tags
 }
 
-resource "azurerm_network_security_rule" "subnet_rules" {
-  for_each                    = var.nsg_rules
+resource "azurerm_network_security_rule" "this" {
+  for_each = var.nsg_rules
+
   name                        = each.key
   priority                    = each.value.priority
   direction                   = each.value.direction
