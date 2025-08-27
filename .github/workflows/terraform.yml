@@ -32,7 +32,7 @@ jobs:
 
       - name: Terraform Init
         working-directory: envs/${{ matrix.env }}
-        run: terraform init -reconfigure -input=false
+        run: terraform init -input=false
 
       - name: Terraform Validate
         working-directory: envs/${{ matrix.env }}
