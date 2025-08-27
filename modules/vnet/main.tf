@@ -1,31 +1,51 @@
-resource "azurerm_virtual_network" "this" {
-  name                = var.vnet_name
-  address_space       = var.address_space
-  location            = var.location
-  resource_group_name = var.resource_group_name
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~>3.0"
+    }
+  }
+
+  backend "azurerm" {
+    resource_group_name  = "tfstate-rg"
+    storage_account_name = "tfstatestorage123"
+    container_name       = "tfstate"
+    key                  = "dev.terraform.tfstate"
+  }
 }
 
-resource "azurerm_subnet" "this" {
-  name                 = var.subnet_name
-  resource_group_name  = var.resource_group_name
-  virtual_network_name = azurerm_virtual_network.this.name
-  address_prefixes     = var.subnet_prefixes
+provider "azurerm" {
+  features {}
 }
 
-resource "azurerm_network_security_group" "this" {
-  name                = "${var.vnet_name}-nsg"
-  location            = var.location
-  resource_group_name = var.resource_group_name
+locals {
+  name_prefix = "myproject"
 }
 
-resource "azurerm_subnet_network_security_group_association" "this" {
-  subnet_id                 = azurerm_subnet.this.id
-  network_security_group_id = azurerm_network_security_group.this.id
+resource "azurerm_resource_group" "rg" {
+  name     = "${local.name_prefix}-rg"
+  location = "East US"
 }
 
-resource "azurerm_network_security_rule" "subnet_rules" {
-  for_each = {
-    "ssh" = {
+module "vnet" {
+  source              = "./modules/vnet"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+
+  vnet_name     = "${local.name_prefix}-vnet"
+  address_space = ["10.0.0.0/16"]
+
+  subnets = {
+    subnet1 = {
+      address_prefix = "10.0.1.0/24"
+    }
+    subnet2 = {
+      address_prefix = "10.0.2.0/24"
+    }
+  }
+
+  nsg_rules = {
+    allow_ssh = {
       priority                   = 100
       direction                  = "Inbound"
       access                     = "Allow"
@@ -35,31 +55,5 @@ resource "azurerm_network_security_rule" "subnet_rules" {
       source_address_prefix      = "*"
       destination_address_prefix = "*"
     }
-    "http" = {
-      priority                   = 110
-      direction                  = "Inbound"
-      access                     = "Allow"
-      protocol                   = "Tcp"
-      source_port_range          = "*"
-      destination_port_range     = "80"
-      source_address_prefix      = "*"
-      destination_address_prefix = "*"
-    }
   }
-
-  name                        = "${each.key}-rule"
-  priority                    = each.value.priority
-  direction                   = each.value.direction
-  access                      = each.value.access
-  protocol                    = each.value.protocol
-  source_port_range           = each.value.source_port_range
-  destination_port_range      = each.value.destination_port_range
-  source_address_prefix       = each.value.source_address_prefix
-  destination_address_prefix  = each.value.destination_address_prefix
-  resource_group_name         = var.resource_group_name
-  network_security_group_name = azurerm_network_security_group.this.name
-}
-
-output "subnet_id" {
-  value = azurerm_subnet.this.id
 }
