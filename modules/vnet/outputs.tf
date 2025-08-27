@@ -1,14 +1,19 @@
-output "subnet_ids" {
-  description = "IDs of created subnets"
-  value       = { for k, s in azurerm_subnet.this : k => s.id }
+output "vnet_name" {
+  description = "The name of the Virtual Network"
+  value       = azurerm_virtual_network.this.name
 }
 
 output "vnet_id" {
-  description = "ID of the virtual network"
+  description = "The ID of the Virtual Network"
   value       = azurerm_virtual_network.this.id
 }
 
-output "nsg_id" {
-  description = "ID of the network security group"
-  value       = azurerm_network_security_group.this.id
+output "subnet_names" {
+  description = "The names of the subnets"
+  value       = { for k, s in azurerm_subnet.this : k => s.name }
+}
+
+output "subnet_ids" {
+  description = "The IDs of the subnets"
+  value       = { for k, s in azurerm_subnet.this : k => s.id }
 }
