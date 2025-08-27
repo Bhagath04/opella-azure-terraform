@@ -19,26 +19,38 @@ resource "azurerm_resource_group" "rg" {
 # Reusable VNet module
 module "vnet" {
   source              = "../../modules/vnet"
-  vnet_name                = "${local.name_prefix}-vnet"
+  vnet_name           = "${local.name_prefix}-vnet"
   resource_group_name = azurerm_resource_group.rg.name
   location            = var.location
   address_space       = var.address_space
   subnets             = var.subnets
-  nsg_rules = [
-    {
-      name                       = "allow-ssh"
+
+  nsg_rules = {
+    allow-ssh = {
       priority                   = 100
       direction                  = "Inbound"
       access                     = "Allow"
       protocol                   = "Tcp"
       source_port_range          = "*"
       destination_port_range     = "22"
-      source_address_prefix      = "*"
+      source_address_prefix = "YOUR_PUBLIC_IP/32"
       destination_address_prefix = "*"
     }
-  ]
+    deny-all-inbound = {
+      priority                   = 200
+      direction                  = "Inbound"
+      access                     = "Deny"
+      protocol                   = "*"
+      source_port_range          = "*"
+      destination_port_range     = "*"
+      source_address_prefix = "YOUR_PUBLIC_IP/32"
+      destination_address_prefix = "*"
+    }
+  }
+
   tags = local.tags
 }
+
 
 # Public IP (optional for dev)
 resource "azurerm_public_ip" "vm" {
