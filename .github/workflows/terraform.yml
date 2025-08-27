@@ -23,6 +23,7 @@ env:
   ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
   TF_VAR_admin_username: ${{ secrets.TF_VAR_admin_username }}
   TF_VAR_ssh_public_key: ${{ secrets.TF_VAR_ssh_public_key }}
+  TF_VAR_vm_admin_ssh_key: ${{ secrets.TF_VAR_ssh_public_key }}
 
 jobs:
   terraform:
