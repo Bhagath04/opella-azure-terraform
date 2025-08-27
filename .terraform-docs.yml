@@ -1,0 +1,13 @@
+formatter: markdown table
+sections:
+  show:
+    - header
+    - inputs
+    - outputs
+    - requirements
+    - providers
+    - resources
+    - modules
+output:
+  file: README.md
+  mode: inject
