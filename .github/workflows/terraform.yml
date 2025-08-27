@@ -40,7 +40,7 @@ jobs:
 
       - name: Terraform Plan
         working-directory: envs/${{ matrix.env }}
-        run: terraform plan -out=tfplan -input=false
+        run: terraform plan -out=tfplan -input=false -lock=false
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
