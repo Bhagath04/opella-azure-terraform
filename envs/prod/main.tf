@@ -17,7 +17,7 @@ resource "azurerm_resource_group" "rg" {
 
 module "vnet" {
   source              = "../../modules/vnet"
-  name                = "${local.name_prefix}-vnet"
+  vnet_name                = "${local.name_prefix}-vnet"
   resource_group_name = azurerm_resource_group.rg.name
   location            = var.location
   address_space       = var.address_space
